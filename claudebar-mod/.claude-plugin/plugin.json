@@ -1,0 +1,57 @@
+{
+  "name": "claudebar-mod",
+  "version": "0.1.0",
+  "description": "claudebar as a mod: an interactive band with git, model, effort, context, rate limits, cache, tools and agents, plus detail panes, alerts and history",
+  "author": {
+    "name": "VisibleSoft",
+    "url": "https://github.com/visiblesoft-es"
+  },
+  "homepage": "https://github.com/visiblesoft-es/claude-mods/tree/main/claudebar-mod",
+  "repository": "https://github.com/visiblesoft-es/claude-mods",
+  "license": "MIT",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "showGit": {
+      "type": "boolean",
+      "title": "Git line",
+      "description": "Directory, branch, changes and last commit",
+      "default": true
+    },
+    "showModel": {
+      "type": "boolean",
+      "title": "Model line",
+      "description": "Model, effort, context and the compact hint",
+      "default": true
+    },
+    "showLimits": {
+      "type": "boolean",
+      "title": "Rate limits line",
+      "description": "5-hour and 7-day limits",
+      "default": true
+    },
+    "showStats": {
+      "type": "boolean",
+      "title": "Session line",
+      "description": "Duration, cache, lines edited and cost",
+      "default": true
+    },
+    "showTools": {
+      "type": "boolean",
+      "title": "Tools line",
+      "description": "The most used tools",
+      "default": true
+    },
+    "showAgents": {
+      "type": "boolean",
+      "title": "Agents line",
+      "description": "Agents and skills used",
+      "default": true
+    },
+    "alerts": {
+      "type": "boolean",
+      "title": "Alerts",
+      "description": "Toasts when context or rate limits pass a threshold",
+      "default": true
+    }
+  }
+}

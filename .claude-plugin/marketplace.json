@@ -1,0 +1,20 @@
+{
+  "name": "claude-mods",
+  "description": "Claude Code mods by VisibleSoft",
+  "owner": {
+    "name": "VisibleSoft",
+    "url": "https://github.com/visiblesoft-es"
+  },
+  "plugins": [
+    {
+      "name": "agent-dolls",
+      "source": "./agent-dolls",
+      "description": "Side pane with one doll per agent (main and subagents); press one to see its conversation"
+    },
+    {
+      "name": "claudebar-mod",
+      "source": "./claudebar-mod",
+      "description": "claudebar as a mod: an interactive band with git, model, effort, context, rate limits, cache, tools and agents, plus detail panes, alerts and history"
+    }
+  ]
+}
