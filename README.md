@@ -7,7 +7,7 @@ This repository is a plugin marketplace: `.claude-plugin/marketplace.json` lists
 | Mod | What it does |
 | --- | --- |
 | [claudebar-mod](claudebar-mod/) | claudebar as a mod: an interactive band with git, model, effort, context, rate limits, cache, tools and agents, plus detail panes, alerts and history |
-| [agent-dolls](agent-dolls/) | Side pane with one doll per agent (main and subagents); press one to see its conversation |
+| [agent-dolls](agent-dolls/) | Side pane with one little robot per agent (main and subagents); press one to see its conversation |
 
 ## Requirements
 

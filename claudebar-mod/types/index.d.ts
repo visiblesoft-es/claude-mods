@@ -74,6 +74,7 @@ declare module 'claude-code' {
       detail: Detail | null
       history: DayStats[]
       alerted: string[]
+      frame: number
     }
   }
 }

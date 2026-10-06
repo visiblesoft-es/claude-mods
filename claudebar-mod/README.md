@@ -60,7 +60,7 @@ The same lines and the same color thresholds as the bash claudebar. Each line is
   - **Context**: breakdown by category (messages, system prompt, tools, MCP, memory…), the autocompact threshold and a compact button.
   - **Tools**: every tool used by the main agent and by subagents, agents launched, skills, turns and compactions.
   - **Git**: changed files and recent commits.
-  - **Agents**: one doll per agent with its status; press one to see its conversation below. 👁 marks the agent you have on screen.
+  - **Agents**: one little robot per agent, its face following its status and its color its type (as in [agent-dolls](../agent-dolls/)); press one to see its conversation below. 👁 marks the agent you have on screen.
   - **History**: output tokens, sessions, turns, tools and compactions per day, for the last 14 days.
 - **Alerts**: when context passes 70%, 85% and 95% (they re-arm after compacting) and when a rate limit passes 80% and 95%, with the reset time.
 - **History across sessions**, kept in the mod's store (last 30 days).
@@ -85,9 +85,9 @@ In `/config`, each line can be hidden (`showGit`, `showModel`, `showLimits`, `sh
 
 ```
 hooks/register.tsx   everything that talks to the engine: events, band and pane
-hooks/lib/           pure functions: formatting, git parsing, agents
+hooks/lib/           pure functions: formatting, git parsing, agents, robots
 types/index.d.ts     the mod's state contract
-tests/               format.test.ts (formatting and git), band.test.tsx (band and pane on terminal and desktop)
+tests/               format.test.ts (formatting and git), robot.test.ts, band.test.tsx (band and pane on terminal and desktop)
 ```
 
 Everything that receives `$` has to live in `register.tsx`: Claude Code's validator does not let `$` be passed to a function imported from another file.

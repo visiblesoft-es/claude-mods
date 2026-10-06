@@ -25,6 +25,7 @@ declare module 'claude-code' {
       isMainBusy: boolean
       selected: string | null
       detail: Detail | null
+      frame: number
     }
   }
 }

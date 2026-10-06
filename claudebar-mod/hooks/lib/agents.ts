@@ -5,14 +5,6 @@ import type { Doll, Line } from '../../types'
 export const MAIN = 'main'
 const MAX_LINES = 60
 
-export const ICONS: Record<string, string> = {
-  main: '🧑',
-  Explore: '🔍',
-  Plan: '📐',
-  'general-purpose': '🛠',
-  teammate: '👥',
-}
-
 export const STATUS: Record<string, { label: string; color: string }> = {
   running: { label: 'working', color: 'green' },
   pending: { label: 'starting', color: 'yellow' },
@@ -21,13 +13,6 @@ export const STATUS: Record<string, { label: string; color: string }> = {
   completed: { label: 'finished', color: 'gray' },
   failed: { label: 'failed', color: 'red' },
   killed: { label: 'stopped', color: 'red' },
-}
-
-export function figure(status: string): string {
-  if (status === 'running') return ' o '
-  if (status === 'completed') return '\\o/'
-  if (status === 'failed' || status === 'killed') return ' x '
-  return ' o '
 }
 
 export function toDoll(agent: AgentInfo): Doll {

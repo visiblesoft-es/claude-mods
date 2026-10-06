@@ -141,6 +141,7 @@ test('band parity, buttons and pane', async ($, on) => {
     expect(await pane.find({ text: /Main agent/ })).toBeDefined()
     await pane.press({ key: 'tab-agents' })
     expect(await pane.find({ key: 'pick-main' })).toBeDefined()
+    expect(await pane.find({ text: '  ▗▄▄█▄▄▖  ' })).toBeDefined()
     await pane.press({ key: 'tab-history' })
     expect(await pane.find({ text: /1 session ·/ })).toBeDefined()
     expect(await pane.find({ text: /tokens/ })).toBeDefined()

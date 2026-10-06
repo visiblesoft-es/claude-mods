@@ -9,7 +9,7 @@
     {
       "name": "agent-dolls",
       "source": "./agent-dolls",
-      "description": "Side pane with one doll per agent (main and subagents); press one to see its conversation"
+      "description": "Side pane with one little robot per agent (main and subagents); press one to see its conversation"
     },
     {
       "name": "claudebar-mod",

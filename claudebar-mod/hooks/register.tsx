@@ -2,12 +2,13 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, Register, RenderElement, RenderInput, Timer } from 'claude-code'
 
 import type { Detail, DayStats, Doll, Stats, UsageSnap, View } from '../types'
-import { figure, ICONS, MAIN, STATUS, toDoll, toLines } from './lib/agents'
+import { MAIN, STATUS, toDoll, toLines } from './lib/agents'
 import {
   bar, cacheColor, cacheRate, clip, compactHint, countdown, duration, effortColor, kt, lineCount, modelName,
   plural, today, topCounts, usageColor,
 } from './lib/format'
 import { basename, parseNumstat, parseStatus } from './lib/git'
+import { miniRobot, robot } from './lib/robot'
 import { EMPTY_STATS, same } from './lib/state'
 import type { GitInfo } from '../types'
 
@@ -28,6 +29,7 @@ const selected = atom({ plugin: 'claudebar-mod', key: 'selected' } as const, nul
 const detail = atom({ plugin: 'claudebar-mod', key: 'detail' } as const, null)
 const history = atom({ plugin: 'claudebar-mod', key: 'history' } as const, [])
 const alerted = atom({ plugin: 'claudebar-mod', key: 'alerted' } as const, [])
+const frame = atom({ plugin: 'claudebar-mod', key: 'frame' } as const, 0)
 
 // ── git ──
 
@@ -82,6 +84,9 @@ async function readGit($: EngineInterface): Promise<GitInfo> {
 async function refreshAgents($: EngineInterface) {
   const next = (await $.agent.list()).map(toDoll)
   if (!same(next, await read($, dolls))) await update($, dolls, () => next)
+  // Only a working robot animates, so only then is it worth a redraw.
+  const isAnyWorking = (await read($, isMainBusy)) || next.some(d => d.status === 'running')
+  if (isAnyWorking) await update($, frame, n => n + 1)
 
   const id = await read($, selected)
   if (id === null || id === MAIN) return
@@ -475,6 +480,7 @@ async function agentsView($: EngineInterface, { Box, Text, Button }: Els, e: Pan
   const current = (await read($, selected)) ?? MAIN
   const shown = await read($, detail)
   const viewed = e.props.view.agentId ?? MAIN
+  const tick = await read($, frame)
   const main: Doll = {
     id: MAIN,
     type: 'main',
@@ -486,28 +492,57 @@ async function agentsView($: EngineInterface, { Box, Text, Button }: Els, e: Pan
     d.parentId ? 1 + depth(list.find(p => p.id === d.parentId) ?? { ...d, parentId: undefined }) : 1
   const agents = [main, ...list]
   const room = Math.max(3, rows - agents.length - 8)
+  const isCompact = shown !== null
   const owner = shown ? list.find(d => d.id === shown.agentId) : undefined
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" gap={isCompact ? 0 : 1}>
       {agents.map(d => {
         const s = STATUS[d.status] ?? { label: d.status, color: 'gray' }
         const isCurrent = d.id === current
         const indent = d.id === MAIN ? 0 : Math.min(depth(d), 3) * 2
+        const pick = (
+          <Button
+            key={`pick-${d.id}`}
+            label={d.id === MAIN ? 'Main' : d.type}
+            variant={isCurrent ? 'primary' : 'secondary'}
+            onPress={() => selectAgent($, d.id === MAIN ? null : d)}
+          />
+        )
+        const state = (
+          <Text color={s.color}>
+            {isCurrent ? '▶ ' : ''}
+            {s.label}
+            {d.id === viewed ? ' · 👁 on screen' : ''}
+          </Text>
+        )
+
+        if (isCompact) {
+          const mini = miniRobot(d.type, d.status, tick)
+          return (
+            <Box key={`doll-${d.id}`} flexDirection="row" gap={1} marginLeft={indent}>
+              <Text color={mini.color} dimColor={mini.isDim} bold={isCurrent}>{mini.rows[0]}</Text>
+              {pick}
+              {state}
+            </Box>
+          )
+        }
+
+        const bot = robot(d.type, d.status, tick)
         return (
           <Box key={`doll-${d.id}`} flexDirection="row" gap={1} marginLeft={indent}>
-            <Text color={s.color} bold={isCurrent}>{figure(d.status)}</Text>
-            <Button
-              key={`pick-${d.id}`}
-              label={`${ICONS[d.type] ?? '🤖'} ${d.id === MAIN ? 'Main' : d.type}`}
-              variant={isCurrent ? 'primary' : 'secondary'}
-              onPress={() => selectAgent($, d.id === MAIN ? null : d)}
-            />
-            <Text color={s.color}>
-              {s.label}
-              {d.id === viewed ? ' · 👁 on screen' : ''}
-            </Text>
-            {d.id !== MAIN && !shown && <Text dimColor wrap="truncate-end">{clip(d.description, width - 30)}</Text>}
+            <Box flexDirection="column" flexShrink={0}>
+              {bot.rows.map((row, i) => (
+                <Text key={`r${i}`} color={bot.color} dimColor={bot.isDim} bold={isCurrent}>
+                  {row}
+                </Text>
+              ))}
+            </Box>
+            <Box flexDirection="column" marginTop={1}>
+              {pick}
+              <Text dimColor wrap="truncate-end">{clip(d.description, width - 14)}</Text>
+              {state}
+            </Box>
           </Box>
         )
       })}
@@ -516,9 +551,12 @@ async function agentsView($: EngineInterface, { Box, Text, Button }: Els, e: Pan
         <Box flexDirection="column" marginTop={1}>
           <Text dimColor>{'─'.repeat(Math.max(4, columns - 2))}</Text>
           <Box flexDirection="row" justifyContent="space-between">
-            <Text bold wrap="truncate-end">
-              {ICONS[owner?.type ?? ''] ?? '🤖'} {clip(owner?.description ?? 'Subagent', width - 10)}
-            </Text>
+            <Box flexDirection="row" gap={1}>
+              <Text color={miniRobot(owner?.type ?? '', owner?.status ?? 'idle', tick).color}>
+                {miniRobot(owner?.type ?? '', owner?.status ?? 'idle', tick).rows[0]}
+              </Text>
+              <Text bold wrap="truncate-end">{clip(owner?.description ?? 'Subagent', width - 16)}</Text>
+            </Box>
             <Button key="back" label="Close" role="dismiss" onPress={() => selectAgent($, null)} />
           </Box>
           {shown.deny && <Text color="yellow">{clip(shown.deny, width * 2)}</Text>}
@@ -734,7 +772,7 @@ export const register: Register = (on, opts) => {
     void refreshGit($)
     void refreshUsage($)
     void refreshAgents($)
-    $.clock.every(3000, () => void refreshAgents($))
+    $.clock.every(1500, () => void refreshAgents($))
     $.clock.every(15000, () => void refreshUsage($))
     $.clock.every(10000, () => void refreshGit($))
 

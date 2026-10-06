@@ -2,6 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { AgentInfo, EngineInterface, Register, SessionMessage } from 'claude-code'
 
 import type { Detail, Doll, Line } from '../types'
+import { miniRobot, robot } from './lib/robot'
 
 const LIST = 'agent-dolls'
 const MAIN = 'main'
@@ -12,14 +13,7 @@ const dolls = atom({ plugin: 'agent-dolls', key: 'dolls' } as const, [])
 const isMainBusy = atom({ plugin: 'agent-dolls', key: 'isMainBusy' } as const, false)
 const selected = atom({ plugin: 'agent-dolls', key: 'selected' } as const, null)
 const detail = atom({ plugin: 'agent-dolls', key: 'detail' } as const, null)
-
-const ICONS: Record<string, string> = {
-  main: '🧑',
-  Explore: '🔍',
-  Plan: '📐',
-  'general-purpose': '🛠',
-  teammate: '👥',
-}
+const frame = atom({ plugin: 'agent-dolls', key: 'frame' } as const, 0)
 
 const STATUS: Record<string, { label: string; color: string }> = {
   running: { label: 'working', color: 'success' },
@@ -29,14 +23,6 @@ const STATUS: Record<string, { label: string; color: string }> = {
   completed: { label: 'finished', color: 'subtle' },
   failed: { label: 'failed', color: 'error' },
   killed: { label: 'stopped', color: 'error' },
-}
-
-// A three-row doll, posed by the agent's status.
-function figure(status: string): [string, string, string] {
-  if (status === 'running') return [' o ', '/|\\', '/ \\']
-  if (status === 'completed') return ['\\o/', ' | ', '/ \\']
-  if (status === 'failed' || status === 'killed') return [' x ', '/|\\', '/ \\']
-  return [' o ', ' |\\', ' | ']
 }
 
 function toDoll(agent: AgentInfo): Doll {
@@ -83,6 +69,9 @@ function same(a: unknown, b: unknown): boolean {
 async function refresh($: EngineInterface) {
   const next = (await $.agent.list()).map(toDoll)
   if (!same(next, await read($, dolls))) await update($, dolls, () => next)
+  // Only a working robot animates, so only then is it worth a redraw.
+  const isAnyWorking = (await read($, isMainBusy)) || next.some(d => d.status === 'running')
+  if (isAnyWorking) await update($, frame, n => n + 1)
 
   const id = await read($, selected)
   if (id === null || id === MAIN) return
@@ -146,11 +135,12 @@ export const register: Register = on => {
   })
 
   // A single pane: the terminal shows one mod pane at a time (the rest become
-  // tabs), so the dolls and the conversation share it.
+  // tabs), so the robots and the conversation share it.
   on('ui.render', { component: 'Pane', requestId: LIST }, async ($, e) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     const list = await read($, dolls)
     const current = (await read($, selected)) ?? MAIN
+    const tick = await read($, frame)
     const shown = await read($, detail)
     const viewed = e.props.view.agentId ?? MAIN
     const main: Doll = {
@@ -167,13 +157,12 @@ export const register: Register = on => {
 
     const dollRow = (d: Doll) => {
       const s = STATUS[d.status] ?? { label: d.status, color: 'subtle' }
-      const [head, body, legs] = figure(d.status)
       const isCurrent = d.id === current
       const indent = d.id === MAIN ? 0 : Math.min(depth(d), 3) * 2
       const pick = (
         <Button
           key={`pick-${d.id}`}
-          label={`${ICONS[d.type] ?? '🤖'} ${d.id === MAIN ? 'Main' : d.type}`}
+          label={d.id === MAIN ? 'Main' : d.type}
           variant={isCurrent ? 'primary' : 'secondary'}
           onPress={() => select($, d.id === MAIN ? null : d)}
         />
@@ -187,23 +176,27 @@ export const register: Register = on => {
       )
 
       if (isCompact) {
+        const mini = miniRobot(d.type, d.status, tick)
         return (
           <Box key={`doll-${d.id}`} flexDirection="row" gap={1} marginLeft={indent}>
-            <Text color={s.color} bold={isCurrent}>{head}</Text>
+            <Text color={mini.color} dimColor={mini.isDim} bold={isCurrent}>{mini.rows[0]}</Text>
             {pick}
             {state}
           </Box>
         )
       }
 
+      const bot = robot(d.type, d.status, tick)
       return (
         <Box key={`doll-${d.id}`} flexDirection="row" gap={1} marginLeft={indent}>
-          <Box flexDirection="column">
-            <Text color={s.color} bold={isCurrent}>{head}</Text>
-            <Text color={s.color} bold={isCurrent}>{body}</Text>
-            <Text color={s.color} bold={isCurrent}>{legs}</Text>
+          <Box flexDirection="column" flexShrink={0}>
+            {bot.rows.map((row, i) => (
+              <Text key={`r${i}`} color={bot.color} dimColor={bot.isDim} bold={isCurrent}>
+                {row}
+              </Text>
+            ))}
           </Box>
-          <Box flexDirection="column">
+          <Box flexDirection="column" marginTop={1}>
             {pick}
             <Text dimColor wrap="truncate-end">{clip(d.description, width)}</Text>
             {state}
@@ -213,7 +206,7 @@ export const register: Register = on => {
     }
 
     const agents = [main, ...list]
-    const dollRows = isCompact ? agents.length : agents.length * 4
+    const dollRows = isCompact ? agents.length : agents.length * 5
     const room = Math.max(3, (e.props.scroll?.bodyRows ?? e.viewport?.rows ?? 30) - dollRows - 4)
     const owner = shown ? list.find(d => d.id === shown.agentId) : undefined
 
@@ -225,9 +218,12 @@ export const register: Register = on => {
           <Box flexDirection="column" marginTop={1}>
             <Text dimColor>{'─'.repeat(Math.max(4, columns - 2))}</Text>
             <Box flexDirection="row" justifyContent="space-between">
-              <Text bold wrap="truncate-end">
-                {ICONS[owner?.type ?? ''] ?? '🤖'} {clip(owner?.description ?? 'Subagent', width - 10)}
-              </Text>
+              <Box flexDirection="row" gap={1}>
+                <Text color={miniRobot(owner?.type ?? '', owner?.status ?? 'idle', tick).color}>
+                  {miniRobot(owner?.type ?? '', owner?.status ?? 'idle', tick).rows[0]}
+                </Text>
+                <Text bold wrap="truncate-end">{clip(owner?.description ?? 'Subagent', width - 16)}</Text>
+              </Box>
               <Button key="back" label="Close" role="dismiss" onPress={() => select($, null)} />
             </Box>
             {shown.deny && <Text color="warning">{clip(shown.deny, width * 2)}</Text>}
