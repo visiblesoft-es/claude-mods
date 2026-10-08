@@ -3,6 +3,7 @@
 [claudebar](https://github.com/visiblesoft-es/claudebar) rebuilt as a Claude Code mod. It shows the same six lines, now in an interactive band above the prompt that keeps itself up to date, and adds detail panes, alerts and history.
 
 ```
+────────────────────────────────────────────────────────────────────────────────────
 my-app (main mod:3 ahead:2) +47 -12 last: feat(auth): refresh token rotation [ Git › ]
 Opus 5.5 ⚙ high ctx ▓▓▓▓▓▓▓░ 88% ←150kt →52kt [ ⚠ COMPACT now ] [ Context › ]
 5h ▓▓░░░░░░ 28% (1h 56m)  7d ▓▓▓░░░░░ 38% (2d 23h)
@@ -71,7 +72,7 @@ The same lines and the same color thresholds as the bash claudebar. Each line is
 
 ## Configuration
 
-In `/config`, each line can be hidden (`showGit`, `showModel`, `showLimits`, `showStats`, `showTools`, `showAgents`) and alerts can be turned off (`alerts`).
+In `/config`, each line can be hidden (`showGit`, `showModel`, `showLimits`, `showStats`, `showTools`, `showAgents`), and so can the dim rule that separates the band from the conversation (`showSeparator`); alerts can be turned off (`alerts`).
 
 ## Limitations
 

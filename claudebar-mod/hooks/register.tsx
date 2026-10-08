@@ -279,6 +279,15 @@ async function renderBand($: EngineInterface, e: RenderInput<'AbovePrompt'>, opt
     )
   }
 
+  // A dim rule above the band, so it reads apart from the conversation above it.
+  if (rows.length > 0 && options.showSeparator !== false) {
+    rows.unshift(
+      <Text key="separator" dimColor>
+        {'─'.repeat(Math.max(1, columns))}
+      </Text>,
+    )
+  }
+
   return <Box flexDirection="column">{rows}</Box>
 }
 

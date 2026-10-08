@@ -103,6 +103,8 @@ test('band parity, buttons and pane', async ($, on) => {
 
   for (const surface of ['terminal', 'desktop'] as const) {
     const band = await $.ui.mount(BAND(surface))
+    // A dim rule separates the band from the conversation.
+    expect(await band.find({ text: '─'.repeat(100) })).toBeDefined()
     // Line 1: git
     expect(await band.find({ text: /my-app/ })).toBeDefined()
     expect(await band.find({ text: /main mod:1 ahead:2/ })).toBeDefined()
@@ -204,5 +206,26 @@ test('options hide lines', { options: { showTools: false, showLimits: false } },
   // Outside a repository: the directory alone, no branch and no git button.
   expect(await band.find({ text: 'x' })).toBeDefined()
   expect(await band.find({ key: 'open-git' })).toBeUndefined()
+  // The separator is on by default.
+  expect(await band.find({ text: /^─+$/ })).toBeDefined()
+  await band.unmount()
+})
+
+test('the separator can be turned off', { options: { showSeparator: false } }, async ($, on) => {
+  mock.clock(on, { now: NOW })
+  mock.store(on)
+  on('session.usage', () => ({ value: usage(40) }))
+  on('session.cwd', () => ({ value: '/tmp/x' }))
+  on('session.model', () => ({ value: 'claude-sonnet-5-5' }))
+  on('session.id', () => ({ value: 'session-3' }))
+  on('agent.list', () => ({ value: [] }))
+  on('command.register', (_$, e) => ({ value: { command: e.name } }))
+  on('process.run', () => ({ value: { exitCode: 128, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
+  on('session.start', (_$, e) => ({ cwd: e.cwd }))
+
+  await $.session.start({ cwd: '/tmp/x', surface: 'terminal', isInteractive: true })
+  const band = await $.ui.mount(BAND('terminal'))
+  expect(await band.find({ text: 'Sonnet 5.5' })).toBeDefined()
+  expect(await band.find({ text: /^─+$/ })).toBeUndefined()
   await band.unmount()
 })
