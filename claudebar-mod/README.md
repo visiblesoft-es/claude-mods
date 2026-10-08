@@ -67,6 +67,7 @@ The same lines and the same color thresholds as the bash claudebar. Each line is
 - **History across sessions**, kept in the mod's store (last 30 days).
 - **No width problems**: each line fits the available width and is truncated instead of overflowing and hiding the lines below it.
 - **More places**: it draws in the terminal, the desktop app and VS Code.
+- **Shares the band**: other mods that draw above the prompt (such as [pinned-steps](../pinned-steps/)) are shown under its lines instead of being hidden.
 
 `/claudebar` takes the view to open: `context`, `tools`, `git`, `agents` or `history`.
 

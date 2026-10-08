@@ -1,6 +1,6 @@
 {
   "name": "claudebar-mod",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "claudebar as a mod: an interactive band with git, model, effort, context, rate limits, cache, tools and agents, plus detail panes, alerts and history",
   "author": {
     "name": "VisibleSoft",

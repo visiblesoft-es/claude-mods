@@ -1,0 +1,27 @@
+{
+  "name": "pinned-steps",
+  "version": "0.1.0",
+  "description": "Pins the step-by-step procedures Claude gives you above the prompt, so you can follow them while the conversation moves on, and stacks the ones that interrupt them",
+  "author": {
+    "name": "VisibleSoft",
+    "url": "https://github.com/visiblesoft-es"
+  },
+  "homepage": "https://github.com/visiblesoft-es/claude-mods/tree/main/pinned-steps",
+  "repository": "https://github.com/visiblesoft-es/claude-mods",
+  "license": "MIT",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "autoPin": {
+      "type": "boolean",
+      "title": "Pin automatically",
+      "description": "Ask Claude to write procedures as steps blocks and pin them as they arrive (off: only /steps pin)",
+      "default": true
+    },
+    "showSeparator": {
+      "type": "boolean",
+      "title": "Separator",
+      "description": "A dim rule between the conversation and the band",
+      "default": true
+    }
+  }
+}

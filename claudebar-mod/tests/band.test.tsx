@@ -80,6 +80,11 @@ test('band parity, buttons and pane', async ($, on) => {
     value: [{ id: 'claudebar', title: 'claudebar', isShown, isFocused: false, isPlaced }],
   }))
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
+  // What the engine (or another mod beneath) draws in the band.
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text key="below">below</Text>
+  })
   on('session.compact', () => {
     compactions += 1
     return { messages: [{ role: 'user' as const, text: 'summary', toolUses: [] }] }
@@ -105,6 +110,8 @@ test('band parity, buttons and pane', async ($, on) => {
     const band = await $.ui.mount(BAND(surface))
     // A dim rule separates the band from the conversation.
     expect(await band.find({ text: '─'.repeat(100) })).toBeDefined()
+    // Another mod's band, drawn beneath, stays under the lines.
+    expect(await band.find({ text: 'below' })).toBeDefined()
     // Line 1: git
     expect(await band.find({ text: /my-app/ })).toBeDefined()
     expect(await band.find({ text: /main mod:1 ahead:2/ })).toBeDefined()
@@ -194,6 +201,11 @@ test('options hide lines', { options: { showTools: false, showLimits: false } },
   on('command.register', (_$, e) => ({ value: { command: e.name } }))
   on('process.run', () => ({ value: { exitCode: 128, stdout: '', stderr: 'not a repo', isStdoutTruncated: false, isStderrTruncated: false } }))
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
+  // What the engine (or another mod beneath) draws in the band.
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text key="below">below</Text>
+  })
   on('tool.call', () => ({ result: { ok: true } }))
 
   await $.session.start({ cwd: '/tmp/x', surface: 'terminal', isInteractive: true })
@@ -222,6 +234,11 @@ test('the separator can be turned off', { options: { showSeparator: false } }, a
   on('command.register', (_$, e) => ({ value: { command: e.name } }))
   on('process.run', () => ({ value: { exitCode: 128, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
+  // What the engine (or another mod beneath) draws in the band.
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text key="below">below</Text>
+  })
 
   await $.session.start({ cwd: '/tmp/x', surface: 'terminal', isInteractive: true })
   const band = await $.ui.mount(BAND('terminal'))

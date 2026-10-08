@@ -15,6 +15,11 @@
       "name": "claudebar-mod",
       "source": "./claudebar-mod",
       "description": "claudebar as a mod: an interactive band with git, model, effort, context, rate limits, cache, tools and agents, plus detail panes, alerts and history"
+    },
+    {
+      "name": "pinned-steps",
+      "source": "./pinned-steps",
+      "description": "Pins the step-by-step procedures Claude gives you above the prompt, so you can follow them while the conversation moves on, and stacks the ones that interrupt them"
     }
   ]
 }

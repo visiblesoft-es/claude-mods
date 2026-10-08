@@ -140,7 +140,7 @@ const LIMIT_LABELS: Record<string, string> = {
   seven_day_sonnet: '7d sonnet',
 }
 
-async function renderBand($: EngineInterface, e: RenderInput<'AbovePrompt'>, options: PluginOptions) {
+async function renderBand($: EngineInterface, e: RenderInput<'AbovePrompt'>, options: PluginOptions, below: RenderElement) {
   const { Box, Text, Button } = $.ui.resolve(e)
   const g = await read($, git)
   const u = await read($, usage)
@@ -288,7 +288,14 @@ async function renderBand($: EngineInterface, e: RenderInput<'AbovePrompt'>, opt
     )
   }
 
-  return <Box flexDirection="column">{rows}</Box>
+  if (rows.length === 0) return below
+  // What the plugins below draw (another mod's band) stays, under these lines.
+  return (
+    <Box flexDirection="column">
+      {rows}
+      {below}
+    </Box>
+  )
 }
 
 // ── pane ──
@@ -873,8 +880,9 @@ export const register: Register = (on, opts) => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.props.hasSurvey) return next(e)
-    return renderBand($, e, options)
+    const below = await next(e)
+    if (e.props.hasSurvey) return below
+    return renderBand($, e, options, below)
   })
 
   on('ui.render', { component: 'Pane', requestId: 'claudebar' }, ($, e) => renderPane($, e))

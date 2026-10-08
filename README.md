@@ -8,6 +8,7 @@ This repository is a plugin marketplace: `.claude-plugin/marketplace.json` lists
 | --- | --- |
 | [claudebar-mod](claudebar-mod/) | claudebar as a mod: an interactive band with git, model, effort, context, rate limits, cache, tools and agents, plus detail panes, alerts and history |
 | [agent-dolls](agent-dolls/) | Side pane with one little robot per agent (main and subagents); press one to see its conversation |
+| [pinned-steps](pinned-steps/) | Pins the step-by-step procedures Claude gives you above the prompt and stacks the ones that interrupt them, so you can pick them up after a detour |
 
 ## Requirements
 
@@ -29,7 +30,7 @@ At the prompt of a terminal session:
 1. Answer `y` to add the marketplace (first time only).
 2. Pick a scope: the user scope (the first one) enables the mod in all your sessions.
 
-The mod is active right away in that session, with no restart. Replace `claudebar-mod` with `agent-dolls` to install the other one.
+The mod is active right away in that session, with no restart. Replace `claudebar-mod` with `agent-dolls` or `pinned-steps` to install the others.
 
 ### From your shell
 
@@ -37,6 +38,7 @@ The mod is active right away in that session, with no restart. Replace `claudeba
 claude plugin marketplace add visiblesoft-es/claude-mods
 claude plugin install claudebar-mod@claude-mods
 claude plugin install agent-dolls@claude-mods
+claude plugin install pinned-steps@claude-mods
 ```
 
 ### From a local clone, without installing
