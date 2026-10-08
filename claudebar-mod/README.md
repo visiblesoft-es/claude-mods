@@ -14,7 +14,7 @@ Agents: code-reviewer×2 Explore×1 ● 1 active Skills: commit feature-dev [ Ag
 
 ## Installation
 
-Requires Claude Code with mod support (tested on 2.1.291).
+Requires Claude Code with mod support (tested on the latest version).
 
 From a Claude Code session in the terminal:
 
@@ -81,7 +81,7 @@ In `/config`, each line can be hidden (`showGit`, `showModel`, `showLimits`, `sh
 - **Lines edited** are computed from the edits (Edit, Write, MultiEdit, NotebookEdit) of the main agent and of subagents, so they may not match the bash version's figure exactly.
 - The cache hit rate is the main agent's last turn.
 - Git is read every 10 s and after each edit or Bash command.
-- It uses Claude Code's mod API, which is in early access (built on 2.1.291). On older Claude Code versions, keep using the bash claudebar.
+- It uses Claude Code's mod API, which is in early access and may change between releases. On Claude Code versions without mod support, keep using the bash claudebar.
 
 ## Development
 

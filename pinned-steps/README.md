@@ -11,7 +11,7 @@ A Claude Code mod that pins the step-by-step procedures Claude gives you above t
 
 ## Installation
 
-Requires Claude Code with mod support (tested on 2.1.294).
+Requires Claude Code with mod support (tested on the latest version).
 
 From a Claude Code session in the terminal:
 

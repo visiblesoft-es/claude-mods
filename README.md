@@ -12,7 +12,7 @@ This repository is a plugin marketplace: `.claude-plugin/marketplace.json` lists
 
 ## Requirements
 
-- Claude Code with mod support. The mods are tested on **Claude Code 2.1.291**. The mod API is in early access and may change between releases, so an older or newer version might not load them.
+- Claude Code with mod support. The mods are tested on **the latest version of Claude Code**. The mod API is in early access and may change between releases, so an older version might not load them.
 - Nothing else: no `jq`, no Node, no setup step.
 
 Check your version with `claude --version`.

@@ -34,7 +34,7 @@ Found 14 endpoints…
 
 ## Installation
 
-Requires Claude Code with mod support (tested on 2.1.291).
+Requires Claude Code with mod support (tested on the latest version).
 
 From a Claude Code session in the terminal:
 
@@ -92,4 +92,4 @@ claude plugin test .
 
 When Claude Code loads the mod it writes the API types into `.claude-plugin/types/` (ignored by the repository's `.gitignore`); with them, `tsc -p .` type-checks the mod.
 
-Built on the Claude Code 2.1.291 mod API, which is in early access and may change between releases.
+Built on Claude Code's mod API, which is in early access and may change between releases.
