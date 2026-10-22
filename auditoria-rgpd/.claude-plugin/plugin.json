@@ -1,0 +1,13 @@
+{
+  "name": "auditoria-rgpd",
+  "version": "0.1.0",
+  "description": "Skill (in Spanish) for a technical GDPR/LOPDGDD audit of an application's code (.NET, Angular, Flutter): processing map, findings with article, evidence and fix, and a docs-vs-code check",
+  "author": {
+    "name": "VisibleSoft",
+    "url": "https://github.com/visiblesoft-es"
+  },
+  "homepage": "https://github.com/visiblesoft-es/claude-mods/tree/main/auditoria-rgpd",
+  "repository": "https://github.com/visiblesoft-es/claude-mods",
+  "license": "MIT",
+  "keywords": ["gdpr", "rgpd", "lopdgdd", "privacy", "audit", "dotnet", "angular", "flutter"]
+}

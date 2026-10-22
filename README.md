@@ -2,13 +2,19 @@
 
 [Claude Code](https://claude.ai/code) mods by VisibleSoft. A mod is a plugin of *function hooks*: code that runs inside Claude Code and can draw interactive panes and bands, react to tool calls and prompts, and add commands.
 
-This repository is a plugin marketplace: `.claude-plugin/marketplace.json` lists every mod.
+This repository is a plugin marketplace: `.claude-plugin/marketplace.json` lists every mod and skill.
 
 | Mod | What it does |
 | --- | --- |
 | [claudebar-mod](claudebar-mod/) | claudebar as a mod: an interactive band with git, model, effort, context, rate limits, cache, tools and agents, plus detail panes, alerts and history |
 | [agent-dolls](agent-dolls/) | Side pane with one little robot per agent (main and subagents); press one to see its conversation |
 | [pinned-steps](pinned-steps/) | Pins the step-by-step procedures Claude gives you above the prompt and stacks the ones that interrupt them, so you can pick them up after a detour |
+
+| Skill | What it does |
+| --- | --- |
+| [auditoria-rgpd](auditoria-rgpd/) | Technical GDPR audit of an application's code under Spanish law (RGPD, LOPDGDD, ET, LSSI), tuned for .NET, Angular and Flutter. Written in Spanish |
+
+Skills install the same way as mods.
 
 ## Requirements
 
@@ -72,6 +78,12 @@ To remove the marketplace too: `claude plugin marketplace remove claude-mods`.
 ## Configuration
 
 Mods with options (for example, which lines claudebar-mod shows) add them to `/config`. You can also inspect them from your shell with `claude plugin configure <mod>`.
+
+## Adding a skill
+
+1. Create a `<skill>/` folder with `.claude-plugin/plugin.json`, `skills/<skill>/SKILL.md` and a `README.md`.
+2. Add its entry to `.claude-plugin/marketplace.json` and to the Skill table above.
+3. Validate it with `claude plugin validate ./<skill>`.
 
 ## Adding a mod
 
