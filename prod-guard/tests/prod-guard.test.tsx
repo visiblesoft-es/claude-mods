@@ -6,6 +6,13 @@ const BAND = {
   component: 'AbovePrompt' as const,
   props: { hasSurvey: false, isWorking: false, maxRows: 20, bodyColumns: 120, scroll: { offset: 0, bodyRows: 20 }, view: {} },
 }
+const PANE = {
+  plugin: 'prod-guard',
+  surface: 'terminal' as const,
+  component: 'Pane' as const,
+  requestId: 'prod-guard',
+  props: { title: 'Production commands', isFocused: false, bodyColumns: 60, placement: 'dock' as const, scroll: { offset: 0, bodyRows: 40 }, view: {} },
+}
 const OPTIONS = { options: { hosts: '10.0.0.1', dockerContexts: 'prod-ctx', patterns: 'deploy\\.sh', bandMinutes: 30 } }
 
 test('writes are refused where nobody can be asked; reads and other commands pass', OPTIONS, async ($, on) => {
@@ -41,7 +48,7 @@ test('what the rules refuse stays refused', OPTIONS, async ($, on) => {
   expect(r.reason).toBe('a rule')
 })
 
-test('the band shows while a command runs, and a refused one is taken back', OPTIONS, async ($, on) => {
+test('the band shows while a command runs, and says what was refused', OPTIONS, async ($, on) => {
   let during: unknown
   let refuse = false
   on('ui.render', ($, e) => { const { Text } = $.ui.resolve(e); return <Text>engine</Text> })
@@ -58,6 +65,7 @@ test('the band shows while a command runs, and a refused one is taken back', OPT
   expect(during).toBeDefined()
 
   let band = await $.ui.mount(BAND)
+  expect(await band.find({ text: /10\.0\.0\.1 · 1 done/ })).toBeDefined()
   await band.press({ key: 'clear' })
   await band.unmount()
 
@@ -65,8 +73,35 @@ test('the band shows while a command runs, and a refused one is taken back', OPT
   const refused = await $.tool.call({ tool: 'Bash', command: 'ssh 10.0.0.1 reboot' }).catch((e: unknown) => e)
   expect(refused).toBeDefined()
   band = await $.ui.mount(BAND)
-  expect(await band.find({ key: 'clear' })).toBeUndefined()
+  expect(await band.find({ text: /10\.0\.0\.1 · 1 refused/ })).toBeDefined()
   await band.unmount()
+})
+
+test('the commands can be listed, newest first', OPTIONS, async ($, on) => {
+  on('ui.render', ($, e) => { const { Text } = $.ui.resolve(e); return <Text>engine</Text> })
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('clock.now', () => ({ value: 1000 }))
+  on('process.run', () => ({ value: { exitCode: 0, stdout: 'default\n', stderr: '' } }))
+  on('tool.check', () => ({ decision: 'allow' as const }))
+  on('tool.call', () => ({ result: {} }))
+  await $.tool.call({ tool: 'Bash', command: 'ssh 10.0.0.1 uptime' })
+  await $.tool.call({ tool: 'Bash', command: 'ls' })
+  await $.tool.call({ tool: 'Bash', command: './deploy.sh' }).catch(() => undefined)
+
+  const pane = await $.ui.mount(PANE)
+  expect(await pane.find({ text: /ssh 10\.0\.0\.1 uptime/ })).toBeDefined()
+  expect(await pane.find({ text: /read-only/ })).toBeDefined()
+  expect(await pane.find({ text: /^ls$/ })).toBeUndefined()
+  await pane.unmount()
+
+  const band = await $.ui.mount(BAND)
+  await band.press({ key: 'details' })
+  await band.press({ key: 'clear' })
+  await band.unmount()
+  const empty = await $.ui.mount(PANE)
+  expect(await empty.find({ text: /No commands/ })).toBeDefined()
+  await empty.unmount()
 })
 
 test('the band shows what ran, unlocks, locks and clears', OPTIONS, async ($, on) => {
@@ -88,7 +123,7 @@ test('the band shows what ran, unlocks, locks and clears', OPTIONS, async ($, on
   await $.tool.call({ tool: 'Bash', command: 'ls' })
   expect(toasts).toEqual(['This session is touching production: 10.0.0.1'])
   band = await $.ui.mount(BAND)
-  expect(await band.find({ text: /10\.0\.0\.1 · 1 command · 0 possible writes/ })).toBeDefined()
+  expect(await band.find({ text: /10\.0\.0\.1 · 1 done/ })).toBeDefined()
   expect(await band.find({ text: 'engine' })).toBeDefined()
 
   const write = () => $.tool.check({ tool: 'Bash', input: { command: 'ssh 10.0.0.1 reboot' } })

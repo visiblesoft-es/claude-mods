@@ -1,19 +1,23 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, RenderInput } from 'claude-code'
 
+import type { Entry } from '../types'
 import { assess, mentionsDocker, parseTargets } from './lib/classify'
 import type { Assessment, Targets } from './lib/classify'
+import { addEntry, clip, clockTime, entryHeading, finishEntry, isStale, logText, settleRunning, summary } from './lib/log'
 
 // $ may only be passed to functions declared in this file; lib/classify.ts is pure.
 
-const touch = atom({ plugin: 'prod-guard', key: 'touch' } as const, null)
+const log = atom({ plugin: 'prod-guard', key: 'log' } as const, [])
 const unlockedUntil = atom({ plugin: 'prod-guard', key: 'unlockedUntil' } as const, null)
 
+const PANE = 'prod-guard'
 const UNLOCK_MINUTES = 15
 const MINUTE = 60_000
 
 let targets: Targets = { hosts: [], contexts: [], patterns: [], invalid: [] }
 let announced = false
+let ids = 0
 let bandMinutes = 30
 
 async function currentContext($: EngineInterface): Promise<string | null> {
@@ -55,39 +59,28 @@ function wasRefused(ran: { deny?: string; text?: string }): boolean {
 }
 
 // The band shows from the moment a command starts, not when it ends: a deployment
-// can take minutes. A command that ends up refused is taken back.
-async function record($: EngineInterface, found: Assessment) {
+// can take minutes.
+async function start($: EngineInterface, command: string, found: Assessment): Promise<string> {
   const at = await $.clock.now()
+  const id = `${at}-${++ids}`
   if (!announced) {
     announced = true
     $.ui.toast(`This session is touching production: ${found.target}`)
   }
-  await update($, touch, t => ({
-    target: found.target,
-    at,
-    commands: (t?.commands ?? 0) + 1,
-    writes: (t?.writes ?? 0) + (found.isWrite ? 1 : 0),
-  }))
+  const entry: Entry = { id, at, command, target: found.target, isWrite: found.isWrite, status: 'running' }
+  await update($, log, l => addEntry(l, entry))
+  return id
 }
 
-async function takeBack($: EngineInterface, found: Assessment) {
-  await update($, touch, t => {
-    if (!t || t.commands <= 1) return null
-    return { ...t, commands: t.commands - 1, writes: t.writes - (found.isWrite ? 1 : 0) }
-  })
-  if ((await read($, touch)) === null) announced = false
-}
-
-async function clearTouch($: EngineInterface) {
-  await update($, touch, () => null)
+async function clearLog($: EngineInterface) {
+  await update($, log, () => [])
   announced = false
 }
 
 // Band and unlock expire when something next happens: no timer needed.
 async function prune($: EngineInterface) {
   const now = await $.clock.now()
-  const t = await read($, touch)
-  if (t && now - t.at > bandMinutes * MINUTE) await clearTouch($)
+  if (isStale(await read($, log), now, bandMinutes * MINUTE)) await clearLog($)
   const until = await read($, unlockedUntil)
   if (until !== null && now >= until) await update($, unlockedUntil, () => null)
 }
@@ -97,35 +90,50 @@ async function unlock($: EngineInterface, minutes: number) {
   await update($, unlockedUntil, () => now + minutes * MINUTE)
 }
 
-const clockTime = (ms: number) => {
-  const d = new Date(ms)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+async function openPane($: EngineInterface) {
+  const opened = await $.ui.open({ id: PANE, title: 'Production commands', focus: true })
+  if (!opened.isPlaced) $.ui.toast(`The pane is open but cannot be shown: ${opened.reason}. /prod-guard log lists the commands.`, { timeoutMs: 8000 })
 }
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 async function renderBand($: EngineInterface, e: RenderInput<'AbovePrompt'>, below: RenderElement) {
-  const t = await read($, touch)
+  const entries = await read($, log)
   const until = await read($, unlockedUntil)
-  if (!t && until === null) return below
+  if (entries.length === 0 && until === null) return below
   const { Box, Text, Button } = $.ui.resolve(e)
   return (
     <Box flexDirection="column">
       <Box flexDirection="row" gap={1}>
         <Text bold color="error">⚠ PRODUCTION</Text>
-        {t ? (
-          <Text>
-            {t.target} · {plural(t.commands, 'command')} · {plural(t.writes, 'possible write')}
-          </Text>
-        ) : null}
+        {entries.length > 0 ? <Text>{summary(entries)}</Text> : null}
         {until !== null ? <Text bold color="error">writes unlocked until {clockTime(until)}</Text> : null}
+        {entries.length > 0 ? <Button key="details" label="Details" onPress={() => openPane($)} /> : null}
         {until !== null ? (
           <Button key="lock" label="Lock" variant="primary" onPress={() => update($, unlockedUntil, () => null)} />
         ) : (
           <Button key="unlock" label={`Unlock ${UNLOCK_MINUTES} min`} onPress={() => unlock($, UNLOCK_MINUTES)} />
         )}
-        {t ? <Button key="clear" label="Clear" onPress={() => clearTouch($)} /> : null}
+        {entries.length > 0 ? <Button key="clear" label="Clear" onPress={() => clearLog($)} /> : null}
       </Box>
       {below}
+    </Box>
+  )
+}
+
+async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
+  const { Box, Text } = $.ui.resolve(e)
+  const entries = [...(await read($, log))].reverse()
+  if (entries.length === 0) {
+    return <Text dimColor wrap="wrap">No commands have touched production since the last Clear.</Text>
+  }
+  const room = Math.max(20, e.props.bodyColumns * 4)
+  return (
+    <Box flexDirection="column" gap={1}>
+      {entries.map(entry => (
+        <Box key={entry.id} flexDirection="column">
+          <Text bold={entry.status === 'running'} dimColor={entry.status !== 'running'}>{entryHeading(entry)}</Text>
+          <Text wrap="wrap">{clip(entry.command, room)}</Text>
+        </Box>
+      ))}
     </Box>
   )
 }
@@ -142,6 +150,7 @@ async function runCommand($: EngineInterface, args: string): Promise<string> {
     await update($, unlockedUntil, () => null)
     return 'Locked: commands that may change production ask again.'
   }
+  if (verb === 'log') return logText(await read($, log))
   if (verb === 'test') {
     const command = args.trim().slice('test'.length).trim()
     if (!command) return 'Usage: /prod-guard test <command>'
@@ -169,9 +178,10 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'prod-guard',
-      description: 'Production guard: show what is guarded, unlock or lock writes, or test a command',
-      argumentHint: '[unlock [min]|lock|test <command>]',
+      description: 'Production guard: show what is guarded, list commands, unlock or lock writes, or test a command',
+      argumentHint: '[log|unlock [min]|lock|test <command>]',
     })
+    await update($, log, settleRunning)
     if (targets.invalid.length > 0) $.ui.toast(`prod-guard ignores invalid patterns: ${targets.invalid.join(' ')}`)
     return next(e)
   })
@@ -194,17 +204,29 @@ export const register: Register = (on, options) => {
 
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const found = await assessCommand($, e.command)
-    if (found) await record($, found)
-    const ran = await next(e)
-    if (found && wasRefused(ran)) await takeBack($, found)
-    return ran
+    if (!found) return next(e)
+    const id = await start($, e.command, found)
+    try {
+      const ran = await next(e)
+      await update($, log, l => finishEntry(l, id, wasRefused(ran) ? 'refused' : 'done'))
+      return ran
+    } catch (error) {
+      await update($, log, l => finishEntry(l, id, 'done'))
+      throw error
+    }
   })
   on('tool.call', { tool: 'Monitor' }, async ($, e, next) => {
     const found = e.command ? await assessCommand($, e.command) : null
-    if (found) await record($, found)
-    const ran = await next(e)
-    if (found && wasRefused(ran)) await takeBack($, found)
-    return ran
+    if (!found || !e.command) return next(e)
+    const id = await start($, e.command, found)
+    try {
+      const ran = await next(e)
+      await update($, log, l => finishEntry(l, id, wasRefused(ran) ? 'refused' : 'done'))
+      return ran
+    } catch (error) {
+      await update($, log, l => finishEntry(l, id, 'done'))
+      throw error
+    }
   })
 
   on('turn.complete', async ($, e, next) => {
@@ -221,4 +243,6 @@ export const register: Register = (on, options) => {
     if (e.props.hasSurvey) return below
     return renderBand($, e, below)
   })
+
+  on('ui.render', { component: 'Pane', requestId: PANE }, ($, e) => renderPane($, e))
 }

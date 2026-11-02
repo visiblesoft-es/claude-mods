@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { assess, isReadOnly, parseTargets } from '../hooks/lib/classify'
+import { assess, isReadOnly, parseTargets, withoutInertHeredocs } from '../hooks/lib/classify'
 
 const T = parseTargets('203.0.113.10, db-prod, api.example.com', 'acme-production', 'deploy\\.sh')
 
@@ -44,6 +44,20 @@ test('every docker command in a line counts, wherever it is', () => {
   for (const c of ['bash -c "docker rm -f api"', "sh -c 'docker rm -f api'", '/usr/local/bin/docker rm -f api', 'rtk docker rm x']) {
     expect(assess(c, T, C)?.isWrite).toBe(true)
   }
+})
+
+test('text written to a local file only mentions production', () => {
+  const note = "cat > note.md <<'E'\nThe server is 203.0.113.10, see deploy.sh\nE"
+  expect(assess(note, T, null)).toBeNull()
+  expect(assess("python3 - <<E\nhosts = '203.0.113.10'\nE\necho done", T, null)).toBeNull()
+  // What stands outside the body still counts.
+  expect(assess(`${note}\nssh db-prod reboot`, T, null)?.isWrite).toBe(true)
+  expect(assess("ssh db-prod bash <<'E'\nreboot\nE", T, null)?.isWrite).toBe(true)
+  // A body holding a remote tool counts.
+  expect(assess("python3 - <<E\nrun('ssh 203.0.113.10 reboot')\nE", T, null)?.isWrite).toBe(true)
+  expect(assess("bash <<E\ndocker --context acme-production rm x\nE", T, null)?.isWrite).toBe(true)
+  // An unterminated heredoc is left as it is.
+  expect(withoutInertHeredocs('cat <<E\n203.0.113.10')).toBe('cat <<E\n203.0.113.10')
 })
 
 test('reads stay reads', () => {

@@ -61,7 +61,21 @@ function matchesHost(command: string, host: string): boolean {
   ).test(command)
 }
 
-export function findTarget(command: string, t: Targets, currentContext: string | null): string | null {
+const HEREDOC = /(?<!<)<<-?\s*(['"]?)(\w+)\1([^\n]*\n)([\s\S]*?)\n[ \t]*\2(?=\n|$)/g
+const REMOTE_TOOL = /\b(?:ssh|scp|rsync|sftp|curl|wget|docker)\b/
+
+// Text written into a local file only mentions production. The body of a heredoc
+// counts only if it holds a remote tool: a script that connects through a library
+// of its own, naming none, goes unseen, which is the price of not asking about
+// every note or fixture that holds a host name.
+export function withoutInertHeredocs(command: string): string {
+  return command.replace(HEREDOC, (all, _quote: string, tag: string, rest: string, body: string) =>
+    REMOTE_TOOL.test(body) ? all : `<<${tag}${rest}${tag}`,
+  )
+}
+
+export function findTarget(raw: string, t: Targets, currentContext: string | null): string | null {
+  const command = withoutInertHeredocs(raw)
   for (const host of t.hosts) if (matchesHost(command, host)) return host
   // Every context the command names counts, wherever it is.
   for (const name of namedContexts(command)) if (t.contexts.includes(name)) return `docker:${name}`
