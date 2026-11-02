@@ -5,17 +5,34 @@ import type { Procedure, Step, StepStatus } from '../../types'
 
 export const MAX_STACK = 6
 
-const FENCE = /^ {0,3}(`{3,}|~{3,})\s*steps\b[^\n]*\n([\s\S]*?)\n {0,3}\1[ \t]*$/gim
+const FENCE_LINE = /^ {0,3}(`{3,}|~{3,})[ \t]*([^\n]*)$/
 const NUMBERED = /^\s*(\d+)[.)]\s+(.+)$/
 
 export type Parsed = { title: string; steps: { text: string; detail?: string }[] }
 
-/** The ```steps blocks of a text, in order. */
+/**
+ * The ```steps blocks of a text, in order. A block shown inside another fence
+ * is an example, not a procedure, so fences are followed line by line.
+ */
 export function parseBlocks(text: string): Parsed[] {
   const found: Parsed[] = []
-  for (const m of text.matchAll(FENCE)) {
-    const parsed = parseBody(m[2] ?? '')
-    if (parsed.steps.length > 0) found.push(parsed)
+  let open: { marker: string; isSteps: boolean; lines: string[] } | null = null
+  for (const line of text.split('\n')) {
+    const fence = FENCE_LINE.exec(line.replace(/\r$/, ''))
+    if (!open) {
+      if (fence) open = { marker: fence[1]!, isSteps: /^steps\b/i.test(fence[2]!), lines: [] }
+      continue
+    }
+    const closes = fence && fence[1]![0] === open.marker[0] && fence[1]!.length >= open.marker.length && fence[2]!.trim() === ''
+    if (!closes) {
+      open.lines.push(line)
+      continue
+    }
+    if (open.isSteps) {
+      const parsed = parseBody(open.lines.join('\n'))
+      if (parsed.steps.length > 0) found.push(parsed)
+    }
+    open = null
   }
   return found
 }
@@ -185,5 +202,5 @@ export function progressNote(stack: Procedure[]): string | null {
 export const INSTRUCTIONS = [
   '# Pinned steps',
   'When you give the user a procedure they will carry out themselves, step by step (commands to run, settings to change, things to check), write its steps in a fenced code block whose info string is `steps`, instead of an ordinary numbered list: an optional first line `# Title`, then one line per step, `1. ...`, short and imperative, with any command in backticks. Lines under a step that are not numbered are its details. The pinned-steps plugin pins the block above the prompt, so the user can follow it while the conversation moves on to other things.',
-  'Use it only for procedures the user performs, not for your own plan of work or for ordinary lists. To revise a pinned procedure, write the block again with the same title; a new title pins a new procedure on top of the current one, and the current one resumes when the new one is finished.',
+  'Use it only for procedures the user performs, not for your own plan of work or for ordinary lists. Every such block is pinned as written, so never use one as an example or to explain the format: to show the format, put it inside a longer fence. To revise a pinned procedure, write the block again with the same title; a new title pins a new procedure on top of the current one, and the current one resumes when the new one is finished.',
 ].join('\n\n')

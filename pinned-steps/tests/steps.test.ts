@@ -16,6 +16,23 @@ const ANSWER = [
   'Tell me how it goes.',
 ].join('\n')
 
+test('a block shown inside another fence is an example, not a procedure', () => {
+  const inner = ['```steps', '# Example', '1. a', '```']
+  expect(parseBlocks(['````', ...inner, '````'].join('\n'))).toEqual([])
+  expect(parseBlocks(['   ````', ...inner.map(l => `   ${l}`), '   ````'].join('\n'))).toEqual([])
+  expect(parseBlocks(['~~~markdown', ...inner, '~~~'].join('\n'))).toEqual([])
+  // Once the outer fence closes, a real block counts.
+  const real = parseBlocks(['````', ...inner, '````', '', '```steps', '# Real', '1. b', '```'].join('\n'))
+  expect(real.map(p => p.title)).toEqual(['Real'])
+})
+
+test('a fence closes only with its own kind, at least as long and with no info', () => {
+  expect(parseBlocks('````steps\n1. a\n```\n2. b\n````')[0]?.steps.length).toBe(2)
+  expect(parseBlocks('```steps\n1. a\n~~~\n```')[0]?.steps.length).toBe(1)
+  expect(parseBlocks('```steps\n1. a')).toEqual([])
+  expect(parseBlocks('~~~STEPS\r\n1. a\r\n~~~\r\n').length).toBe(1)
+})
+
 test('parses a steps block with a title and details', () => {
   const [p] = parseBlocks(ANSWER)
   expect(p?.title).toBe('Deploy to staging')

@@ -90,6 +90,7 @@ Both mods draw in the band above the prompt and are shown together, each under i
 ## Limitations
 
 - Pinning depends on Claude writing the `steps` block; when it does not, use `/steps pin`.
+- A `steps` block shown inside another fence is an example and is not pinned. An unfenced one is always pinned, so Claude is asked not to use one as an example.
 - Only the main conversation's answers are pinned, not the subagents'.
 - The stack holds at most six procedures; the oldest is dropped past that.
 - Claude Code shows one mod pane at a time; the others become tabs.

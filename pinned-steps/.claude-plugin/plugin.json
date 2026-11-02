@@ -1,6 +1,6 @@
 {
   "name": "pinned-steps",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pins the step-by-step procedures Claude gives you above the prompt, so you can follow them while the conversation moves on, and stacks the ones that interrupt them",
   "author": {
     "name": "VisibleSoft",
