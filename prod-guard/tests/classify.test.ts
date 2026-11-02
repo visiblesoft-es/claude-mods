@@ -47,17 +47,43 @@ test('every docker command in a line counts, wherever it is', () => {
 })
 
 test('text written to a local file only mentions production', () => {
-  const note = "cat > note.md <<'E'\nThe server is 203.0.113.10, see deploy.sh\nE"
-  expect(assess(note, T, null)).toBeNull()
-  expect(assess("python3 - <<E\nhosts = '203.0.113.10'\nE\necho done", T, null)).toBeNull()
+  for (const c of [
+    "cat > note.md <<'E'\nThe server is 203.0.113.10, see deploy.sh\nE",
+    "cat >> note.md <<'E'\n203.0.113.10\nE",
+    "cat <<'E' > note.md\n203.0.113.10\nE",
+    "tee note.md <<'E'\n203.0.113.10\nE",
+    "cd docs && cat > note.md <<E\n203.0.113.10\nE",
+    "cat > test.ts <<'E'\nssh 203.0.113.10 reboot\nE\necho done",
+  ]) expect(assess(c, T, null)).toBeNull()
+})
+
+test('a heredoc anything else may run counts', () => {
+  for (const c of [
+    // Any other program reading it.
+    'bash <<E\n./deploy.sh\nE',
+    'sudo sh -s <<E\nmysql -h 203.0.113.10 -e x\nE',
+    'mysql <<E\nDROP TABLE deploy.sh\nE',
+    "python3 - <<E\nhosts = '203.0.113.10'\nE\necho done",
+    "node <<'E'\nconnect('203.0.113.10')\nE",
+    "some-tool <<'E'\n203.0.113.10\nE",
+    // Not written to a file.
+    "cat <<'E'\n203.0.113.10\nE",
+    "cat <<'E' | bash\n./deploy.sh\nE",
+    "tee x <<'E' | bash\n./deploy.sh\nE",
+    "cat > /dev/tcp/203.0.113.10/80 <<'E'\nx\nE",
+    // An unquoted tag runs its substitutions; a quoted one does not.
+    'cat > f <<E\n$(./deploy.sh)\nE',
+    'cat > f <<E\n`./deploy.sh`\nE',
+    // Written, then run.
+    "cat > x.sh <<'E'\n./deploy.sh\nE\nbash x.sh",
+    "cat > x.sh <<'E'\n./deploy.sh\nE\nchmod +x x.sh && ./x.sh",
+  ]) expect(`${c}: ${assess(c, T, null)?.isWrite}`).toBe(`${c}: true`)
   // What stands outside the body still counts.
-  expect(assess(`${note}\nssh db-prod reboot`, T, null)?.isWrite).toBe(true)
+  expect(assess("cat > n <<'E'\nx\nE\nssh db-prod reboot", T, null)?.isWrite).toBe(true)
   expect(assess("ssh db-prod bash <<'E'\nreboot\nE", T, null)?.isWrite).toBe(true)
-  // A body holding a remote tool counts.
-  expect(assess("python3 - <<E\nrun('ssh 203.0.113.10 reboot')\nE", T, null)?.isWrite).toBe(true)
-  expect(assess("bash <<E\ndocker --context acme-production rm x\nE", T, null)?.isWrite).toBe(true)
   // An unterminated heredoc is left as it is.
-  expect(withoutInertHeredocs('cat <<E\n203.0.113.10')).toBe('cat <<E\n203.0.113.10')
+  expect(withoutInertHeredocs('cat > f <<E\n203.0.113.10')).toBe('cat > f <<E\n203.0.113.10')
+  expect(withoutInertHeredocs("cat > f <<'E'\n203.0.113.10\nE")).toBe("cat > f <<E\nE")
 })
 
 test('reads stay reads', () => {

@@ -62,16 +62,29 @@ function matchesHost(command: string, host: string): boolean {
 }
 
 const HEREDOC = /(?<!<)<<-?\s*(['"]?)(\w+)\1([^\n]*\n)([\s\S]*?)\n[ \t]*\2(?=\n|$)/g
-const REMOTE_TOOL = /\b(?:ssh|scp|rsync|sftp|curl|wget|docker)\b/
+const FILE_WRITER = /^(?:cat(?:\s*>>?\s*\S+)?|tee(?:\s+-a)?\s+\S+)$/
+const ONLY_A_REDIRECT = /^\s*(?:>>?\s*\S+)?\s*\n$/
+const RUNS_A_FILE = /(?:^|[\s;&|(/])(?:bash|sh|zsh|dash|ksh|source|python\d*(?:\.\d+)?|node|ruby|perl|php|chmod)(?:\s|$)|(?:^|[\s;&|(])\.{0,2}\//
 
-// Text written into a local file only mentions production. The body of a heredoc
-// counts only if it holds a remote tool: a script that connects through a library
-// of its own, naming none, goes unseen, which is the price of not asking about
-// every note or fixture that holds a host name.
+// Text written into a local file only mentions production, so its body is left
+// out. Nothing else is: a heredoc fed to any other program may be run by it, and
+// an unquoted tag runs its substitutions. Neither is a write followed by something
+// that may run what was written.
+function isLocalFileText(line: string, quote: string, rest: string, body: string, after: string): boolean {
+  const consumer = (line.split(/\|\||&&|[;|&]/).pop() ?? '').trim()
+  if (!FILE_WRITER.test(consumer) || !ONLY_A_REDIRECT.test(rest)) return false
+  if (consumer.startsWith('cat') && !consumer.includes('>') && !rest.includes('>')) return false
+  if (`${consumer} ${rest}`.includes('/dev/')) return false
+  if (quote === '' && /`|\$\(/.test(body)) return false
+  return !RUNS_A_FILE.test(after)
+}
+
 export function withoutInertHeredocs(command: string): string {
-  return command.replace(HEREDOC, (all, _quote: string, tag: string, rest: string, body: string) =>
-    REMOTE_TOOL.test(body) ? all : `<<${tag}${rest}${tag}`,
-  )
+  return command.replace(HEREDOC, (all, quote: string, tag: string, rest: string, body: string, offset: number) => {
+    const line = command.slice(command.lastIndexOf('\n', offset) + 1, offset)
+    const after = command.slice(offset + all.length)
+    return isLocalFileText(line, quote, rest, body, after) ? `<<${tag}${rest}${tag}` : all
+  })
 }
 
 export function findTarget(raw: string, t: Targets, currentContext: string | null): string | null {
