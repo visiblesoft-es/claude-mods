@@ -12,7 +12,8 @@ const unlockedUntil = atom({ plugin: 'prod-guard', key: 'unlockedUntil' } as con
 const UNLOCK_MINUTES = 15
 const MINUTE = 60_000
 
-let targets: Targets = { hosts: [], contexts: [], patterns: [] }
+let targets: Targets = { hosts: [], contexts: [], patterns: [], invalid: [] }
+let announced = false
 let bandMinutes = 30
 
 async function currentContext($: EngineInterface): Promise<string | null> {
@@ -46,23 +47,47 @@ async function verdict($: EngineInterface, input: unknown, approver: string | un
     : ({ decision: 'deny', reason: `${reason} Nobody can be asked here, so it was refused.` } as const)
 }
 
+// A refusal by a permission check reaches a tool.call hook as an error result, not
+// as `deny`, so its words are all there is to go by. A miss only counts one
+// command too many in the band.
+function wasRefused(ran: { deny?: string; text?: string }): boolean {
+  return ran.deny !== undefined || /^(?:Error: )?(?:Permission |The user doesn't want to proceed)/.test(ran.text ?? '')
+}
+
+// The band shows from the moment a command starts, not when it ends: a deployment
+// can take minutes. A command that ends up refused is taken back.
 async function record($: EngineInterface, found: Assessment) {
   const at = await $.clock.now()
-  const before = await read($, touch)
+  if (!announced) {
+    announced = true
+    $.ui.toast(`This session is touching production: ${found.target}`)
+  }
   await update($, touch, t => ({
     target: found.target,
     at,
     commands: (t?.commands ?? 0) + 1,
     writes: (t?.writes ?? 0) + (found.isWrite ? 1 : 0),
   }))
-  if (!before) $.ui.toast(`This session is touching production: ${found.target}`)
+}
+
+async function takeBack($: EngineInterface, found: Assessment) {
+  await update($, touch, t => {
+    if (!t || t.commands <= 1) return null
+    return { ...t, commands: t.commands - 1, writes: t.writes - (found.isWrite ? 1 : 0) }
+  })
+  if ((await read($, touch)) === null) announced = false
+}
+
+async function clearTouch($: EngineInterface) {
+  await update($, touch, () => null)
+  announced = false
 }
 
 // Band and unlock expire when something next happens: no timer needed.
 async function prune($: EngineInterface) {
   const now = await $.clock.now()
   const t = await read($, touch)
-  if (t && now - t.at > bandMinutes * MINUTE) await update($, touch, () => null)
+  if (t && now - t.at > bandMinutes * MINUTE) await clearTouch($)
   const until = await read($, unlockedUntil)
   if (until !== null && now >= until) await update($, unlockedUntil, () => null)
 }
@@ -98,7 +123,7 @@ async function renderBand($: EngineInterface, e: RenderInput<'AbovePrompt'>, bel
         ) : (
           <Button key="unlock" label={`Unlock ${UNLOCK_MINUTES} min`} onPress={() => unlock($, UNLOCK_MINUTES)} />
         )}
-        {t ? <Button key="clear" label="Clear" onPress={() => update($, touch, () => null)} /> : null}
+        {t ? <Button key="clear" label="Clear" onPress={() => clearTouch($)} /> : null}
       </Box>
       {below}
     </Box>
@@ -130,6 +155,7 @@ async function runCommand($: EngineInterface, args: string): Promise<string> {
     `Patterns: ${targets.patterns.map(p => p.source).join(', ') || '(none)'}`,
     (await isUnlocked($)) ? 'Writes: unlocked' : 'Writes: ask',
   ]
+  if (targets.invalid.length > 0) lines.push(`Ignored, not valid regular expressions: ${targets.invalid.join(' ')}`)
   if (targets.hosts.length + targets.contexts.length + targets.patterns.length === 0) {
     lines.push('Nothing is guarded yet: set the production hosts in /config.')
   }
@@ -146,27 +172,38 @@ export const register: Register = (on, options) => {
       description: 'Production guard: show what is guarded, unlock or lock writes, or test a command',
       argumentHint: '[unlock [min]|lock|test <command>]',
     })
+    if (targets.invalid.length > 0) $.ui.toast(`prod-guard ignores invalid patterns: ${targets.invalid.join(' ')}`)
     return next(e)
   })
 
   on('command.run', { command: 'prod-guard' }, async ($, e) => ({ text: await runCommand($, e.args) }))
 
-  // The permission decision: `ask` from a hook goes to the person, in auto mode too.
+  // The permission decision: `ask` from a hook goes to the person, in auto mode
+  // too. It only tightens: what the rules or other plugins refuse stays refused.
   const refuse = { decision: 'deny', reason: 'prod-guard: its check failed, so the command was refused.' } as const
-  on('tool.check', { tool: 'Bash' }, async ($, e, next) => (await verdict($, e.input, e.approver)) ?? next(e)).catch(() => refuse)
-  on('tool.check', { tool: 'Monitor' }, async ($, e, next) => (await verdict($, e.input, e.approver)) ?? next(e)).catch(() => refuse)
+  on('tool.check', { tool: 'Bash' }, async ($, e, next) => {
+    const beneath = await next(e)
+    if (beneath.decision === 'deny') return beneath
+    return (await verdict($, e.input, e.approver)) ?? beneath
+  }).catch(() => refuse)
+  on('tool.check', { tool: 'Monitor' }, async ($, e, next) => {
+    const beneath = await next(e)
+    if (beneath.decision === 'deny') return beneath
+    return (await verdict($, e.input, e.approver)) ?? beneath
+  }).catch(() => refuse)
 
-  // What actually ran feeds the band; a refused command does not.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const found = await assessCommand($, e.command)
+    if (found) await record($, found)
     const ran = await next(e)
-    if (found && ran.deny === undefined) await record($, found)
+    if (found && wasRefused(ran)) await takeBack($, found)
     return ran
   })
   on('tool.call', { tool: 'Monitor' }, async ($, e, next) => {
     const found = e.command ? await assessCommand($, e.command) : null
+    if (found) await record($, found)
     const ran = await next(e)
-    if (found && ran.deny === undefined) await record($, found)
+    if (found && wasRefused(ran)) await takeBack($, found)
     return ran
   })
 

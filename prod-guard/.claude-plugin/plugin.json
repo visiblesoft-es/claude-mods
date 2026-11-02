@@ -1,6 +1,6 @@
 {
   "name": "prod-guard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shows a red band while a session touches production and asks you before any command that may change it, even in auto mode",
   "author": { "name": "VisibleSoft", "url": "https://github.com/visiblesoft-es" },
   "homepage": "https://github.com/visiblesoft-es/claude-mods/tree/main/prod-guard",
@@ -23,7 +23,7 @@
     "patterns": {
       "type": "string",
       "title": "Other production commands",
-      "description": "Comma-separated regular expressions, for scripts that reach production by themselves, such as deploy\\.sh",
+      "description": "Space-separated regular expressions, for scripts that reach production by themselves, such as deploy\\.sh",
       "default": ""
     },
     "bandMinutes": {

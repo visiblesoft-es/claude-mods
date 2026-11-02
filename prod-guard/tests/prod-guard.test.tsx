@@ -33,6 +33,42 @@ test('a missing docker counts as no context', OPTIONS, async ($, on) => {
   expect((await $.tool.check({ tool: 'Bash', input: { command: 'docker ps' } })).decision).toBe('allow')
 })
 
+test('what the rules refuse stays refused', OPTIONS, async ($, on) => {
+  on('tool.check', () => ({ decision: 'deny' as const, reason: 'a rule' }))
+  on('process.run', () => ({ value: { exitCode: 0, stdout: 'default\n', stderr: '' } }))
+  on('clock.now', () => ({ value: 1000 }))
+  const r = await $.tool.check({ tool: 'Bash', input: { command: 'ssh 10.0.0.1 reboot' } })
+  expect(r.reason).toBe('a rule')
+})
+
+test('the band shows while a command runs, and a refused one is taken back', OPTIONS, async ($, on) => {
+  let during: unknown
+  let refuse = false
+  on('ui.render', ($, e) => { const { Text } = $.ui.resolve(e); return <Text>engine</Text> })
+  on('ui.toast', () => ({ value: undefined }))
+  on('clock.now', () => ({ value: 1000 }))
+  on('process.run', () => ({ value: { exitCode: 0, stdout: 'default\n', stderr: '' } }))
+  on('tool.call', async () => {
+    const band = await $.ui.mount(BAND)
+    during = await band.find({ key: 'clear' })
+    await band.unmount()
+    return refuse ? { deny: 'no' } : { result: {} }
+  })
+  await $.tool.call({ tool: 'Bash', command: 'ssh 10.0.0.1 uptime' })
+  expect(during).toBeDefined()
+
+  let band = await $.ui.mount(BAND)
+  await band.press({ key: 'clear' })
+  await band.unmount()
+
+  refuse = true
+  const refused = await $.tool.call({ tool: 'Bash', command: 'ssh 10.0.0.1 reboot' }).catch((e: unknown) => e)
+  expect(refused).toBeDefined()
+  band = await $.ui.mount(BAND)
+  expect(await band.find({ key: 'clear' })).toBeUndefined()
+  await band.unmount()
+})
+
 test('the band shows what ran, unlocks, locks and clears', OPTIONS, async ($, on) => {
   let now = 1_000_000
   const toasts: string[] = []

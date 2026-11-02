@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, RenderInput, SessionCompactResult } from 'claude-code'
 
-import { buildInstructions, formatTokens, handoffLimit, planPaths, rememberPaths, shouldWarn } from './lib/handoff'
+import { buildInstructions, formatTokens, handoffLimit, isPlanFile, planPaths, rememberPaths, shouldWarn } from './lib/handoff'
 import type { GitSnapshot } from './lib/handoff'
 
 // $ may only be passed to functions declared in this file; lib/handoff.ts is pure.
@@ -44,8 +44,7 @@ async function measure($: EngineInterface) {
   if (c.tokens !== undefined) await update($, context, () => ({ tokens: c.tokens!, window: c.window }))
 }
 
-async function see($: EngineInterface, text: string) {
-  const seen = planPaths(text)
+async function see($: EngineInterface, seen: string[]) {
   if (seen.length > 0) await update($, files, known => rememberPaths(known, seen))
 }
 
@@ -143,19 +142,19 @@ export const register: Register = (on, options) => {
   })
 
   on('tool.call', { tool: 'Read' }, async ($, e, next) => {
-    await see($, e.file_path)
+    await see($, isPlanFile(e.file_path) ? [e.file_path] : [])
     return next(e)
   })
   on('tool.call', { tool: 'Edit' }, async ($, e, next) => {
-    await see($, e.file_path)
+    await see($, isPlanFile(e.file_path) ? [e.file_path] : [])
     return next(e)
   })
   on('tool.call', { tool: 'Write' }, async ($, e, next) => {
-    await see($, e.file_path)
+    await see($, isPlanFile(e.file_path) ? [e.file_path] : [])
     return next(e)
   })
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
-    await see($, e.command)
+    await see($, planPaths(e.command))
     return next(e)
   })
 

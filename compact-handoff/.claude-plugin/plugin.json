@@ -1,6 +1,6 @@
 {
   "name": "compact-handoff",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Warns at a token threshold you choose and makes every compaction keep the plan, branch, pending checks and decisions, so work continues without re-explaining",
   "author": { "name": "VisibleSoft", "url": "https://github.com/visiblesoft-es" },
   "homepage": "https://github.com/visiblesoft-es/claude-mods/tree/main/compact-handoff",

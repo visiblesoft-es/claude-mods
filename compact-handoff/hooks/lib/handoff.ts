@@ -16,12 +16,20 @@ const CHECKLIST = `This is a working handoff: whoever reads the summary must con
 6. Work still running (background commands, subagents, pipelines, deployments) and how to check on it.
 7. The very next concrete action.`
 
-// Files that say where the work stands, wherever they are mentioned.
-const PLAN_PATH =
-  /(?:[\w.~-]+\/)*(?:docs\/superpowers\/(?:plans|specs)\/[\w.-]+\.md|STATUS\.md|DECISIONS\.md|SPEC\.md|ARCHITECTURE\.md|[\w-]*PLAN[\w-]*\.md)/g
+// Files that say where the work stands.
+const PLAN_NAME =
+  '(?:docs/superpowers/(?:plans|specs)/[\\w.-]+\\.md|STATUS\\.md|DECISIONS\\.md|SPEC\\.md|ARCHITECTURE\\.md|(?:[\\w-]*[_-])?PLANS?(?:[_-][\\w-]*)?\\.md)'
+const PLAN_FILE = new RegExp(`(?:^|/)${PLAN_NAME}$`)
+const PLAN_IN_TEXT = new RegExp(`(?<![\\w.~/-])(?:~|\\.{1,2})?/?(?:[\\w.-]+/)*${PLAN_NAME}(?![\\w-]|\\.\\w)`, 'g')
 
+// A tool's path, taken whole: it may hold spaces.
+export function isPlanFile(path: string): boolean {
+  return PLAN_FILE.test(path)
+}
+
+// Paths mentioned in a shell command.
 export function planPaths(text: string): string[] {
-  return [...new Set(text.match(PLAN_PATH) ?? [])]
+  return [...new Set(text.match(PLAN_IN_TEXT) ?? [])]
 }
 
 // Most recent last, at most `max`, each path once.
