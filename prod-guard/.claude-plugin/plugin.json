@@ -1,0 +1,36 @@
+{
+  "name": "prod-guard",
+  "version": "0.1.0",
+  "description": "Shows a red band while a session touches production and asks you before any command that may change it, even in auto mode",
+  "author": { "name": "VisibleSoft", "url": "https://github.com/visiblesoft-es" },
+  "homepage": "https://github.com/visiblesoft-es/claude-mods/tree/main/prod-guard",
+  "repository": "https://github.com/visiblesoft-es/claude-mods",
+  "license": "MIT",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "hosts": {
+      "type": "string",
+      "title": "Production hosts",
+      "description": "Comma-separated IPs, domains and SSH aliases",
+      "default": ""
+    },
+    "dockerContexts": {
+      "type": "string",
+      "title": "Production Docker contexts",
+      "description": "Comma-separated context names",
+      "default": ""
+    },
+    "patterns": {
+      "type": "string",
+      "title": "Other production commands",
+      "description": "Comma-separated regular expressions, for scripts that reach production by themselves, such as deploy\\.sh",
+      "default": ""
+    },
+    "bandMinutes": {
+      "type": "number",
+      "title": "Band duration (minutes)",
+      "description": "How long the band stays after the last command that touched production",
+      "default": 30
+    }
+  }
+}

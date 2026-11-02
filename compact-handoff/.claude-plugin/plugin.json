@@ -1,0 +1,24 @@
+{
+  "name": "compact-handoff",
+  "version": "0.1.0",
+  "description": "Warns at a token threshold you choose and makes every compaction keep the plan, branch, pending checks and decisions, so work continues without re-explaining",
+  "author": { "name": "VisibleSoft", "url": "https://github.com/visiblesoft-es" },
+  "homepage": "https://github.com/visiblesoft-es/claude-mods/tree/main/compact-handoff",
+  "repository": "https://github.com/visiblesoft-es/claude-mods",
+  "license": "MIT",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "threshold": {
+      "type": "number",
+      "title": "Threshold (tokens)",
+      "description": "Context size at which the band offers a handoff (70% of the window if that is smaller)",
+      "default": 300000
+    },
+    "snoozeStep": {
+      "type": "number",
+      "title": "Snooze (tokens)",
+      "description": "How many more tokens to wait after pressing Snooze",
+      "default": 100000
+    }
+  }
+}

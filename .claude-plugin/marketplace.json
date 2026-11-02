@@ -22,6 +22,16 @@
       "description": "Pins the step-by-step procedures Claude gives you above the prompt, so you can follow them while the conversation moves on, and stacks the ones that interrupt them"
     },
     {
+      "name": "compact-handoff",
+      "source": "./compact-handoff",
+      "description": "Warns at a token threshold you choose and makes every compaction keep the plan, branch, pending checks and decisions, so work continues without re-explaining"
+    },
+    {
+      "name": "prod-guard",
+      "source": "./prod-guard",
+      "description": "Shows a red band while a session touches production and asks you before any command that may change it, even in auto mode"
+    },
+    {
       "name": "auditoria-rgpd",
       "source": "./auditoria-rgpd",
       "description": "Skill (in Spanish) for a technical GDPR/LOPDGDD audit of an application's code (.NET, Angular, Flutter): processing map, findings with article, evidence and fix, and a docs-vs-code check"
