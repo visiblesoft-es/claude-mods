@@ -54,6 +54,7 @@ test('text written to a local file only mentions production', () => {
     "tee note.md <<'E'\n203.0.113.10\nE",
     "cd docs && cat > note.md <<E\n203.0.113.10\nE",
     "cat > test.ts <<'E'\nssh 203.0.113.10 reboot\nE\necho done",
+    "cat > note.md <<'E'\n203.0.113.10\nE\nwc -l note.md && ls",
   ]) expect(assess(c, T, null)).toBeNull()
 })
 
@@ -77,6 +78,11 @@ test('a heredoc anything else may run counts', () => {
     // Written, then run.
     "cat > x.sh <<'E'\n./deploy.sh\nE\nbash x.sh",
     "cat > x.sh <<'E'\n./deploy.sh\nE\nchmod +x x.sh && ./x.sh",
+    "cat > x.sh <<'E'\n./deploy.sh\nE\n. x.sh",
+    "cat > x.sh <<'E'\n./deploy.sh\nE\neval \"$(cat x.sh)\"",
+    "cat > x <<'E'\n./deploy.sh\nE\ncrontab x",
+    "cat > Makefile <<'E'\nall:\n\t./deploy.sh\nE\nmake",
+    "cat > x.sh <<'E'\n./deploy.sh\nE\nxargs -a x.sh sh",
   ]) expect(`${c}: ${assess(c, T, null)?.isWrite}`).toBe(`${c}: true`)
   // What stands outside the body still counts.
   expect(assess("cat > n <<'E'\nx\nE\nssh db-prod reboot", T, null)?.isWrite).toBe(true)

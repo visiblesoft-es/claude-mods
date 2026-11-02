@@ -64,19 +64,18 @@ function matchesHost(command: string, host: string): boolean {
 const HEREDOC = /(?<!<)<<-?\s*(['"]?)(\w+)\1([^\n]*\n)([\s\S]*?)\n[ \t]*\2(?=\n|$)/g
 const FILE_WRITER = /^(?:cat(?:\s*>>?\s*\S+)?|tee(?:\s+-a)?\s+\S+)$/
 const ONLY_A_REDIRECT = /^\s*(?:>>?\s*\S+)?\s*\n$/
-const RUNS_A_FILE = /(?:^|[\s;&|(/])(?:bash|sh|zsh|dash|ksh|source|python\d*(?:\.\d+)?|node|ruby|perl|php|chmod)(?:\s|$)|(?:^|[\s;&|(])\.{0,2}\//
 
 // Text written into a local file only mentions production, so its body is left
-// out. Nothing else is: a heredoc fed to any other program may be run by it, and
-// an unquoted tag runs its substitutions. Neither is a write followed by something
-// that may run what was written.
+// out. Nothing else is: a heredoc fed to any other program may be run by it, an
+// unquoted tag runs its substitutions, and whatever follows could run the file, so
+// what follows must pass as read-only.
 function isLocalFileText(line: string, quote: string, rest: string, body: string, after: string): boolean {
   const consumer = (line.split(/\|\||&&|[;|&]/).pop() ?? '').trim()
   if (!FILE_WRITER.test(consumer) || !ONLY_A_REDIRECT.test(rest)) return false
   if (consumer.startsWith('cat') && !consumer.includes('>') && !rest.includes('>')) return false
   if (`${consumer} ${rest}`.includes('/dev/')) return false
   if (quote === '' && /`|\$\(/.test(body)) return false
-  return !RUNS_A_FILE.test(after)
+  return isReadOnly(after)
 }
 
 export function withoutInertHeredocs(command: string): string {
